@@ -1,0 +1,16 @@
+# ROS 2 编译垃圾
+build/
+install/
+log/
+COLCON_IGNORE
+
+# Python 缓存
+__pycache__/
+*.py[cod]
+
+# IDE 配置
+.vscode/
+.idea/
+
+# 系统垃圾
+.DS_Store

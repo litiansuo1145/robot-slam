@@ -1,0 +1,66 @@
+slam_toolbox:
+  ros__parameters:
+
+    #Plugin params
+    solver_plugin: solver_plugins::CeresSolver
+    solver_type: sparse_normal_cholesky
+    
+    # --- 1. 基础坐标系设置 ---
+    map_frame: map
+    odom_frame: odom
+    base_frame: base_link
+    scan_topic: /pavo2s_scan
+    mode: mapping 
+
+    # --- 2. 性能优化 (解决卡顿的关键) ---
+    # 将地图更新频率从 0.1 改为 1.0 或 2.0
+    # 这一步能极大释放 Jetson 的算力去计算位姿
+    transform_publish_period: 0.02 # 20Hz TF 发布
+
+    # --- 3. 纯雷达模式核心设置 ---
+    # 必须开启扫描匹配，因为你没有里程计
+    use_scan_matching: true
+    
+    # --- 4. 雷达参数过滤 (解决“原地不动”的关键) ---
+    # 最大距离
+    max_laser_range: 20.0
+    
+    # 【重要】最小距离调大！
+    # 设为 0.5 或 0.6，过滤掉雷达附近的底座、线缆和推车人的腿
+    minimum_laser_range: 0.5  
+    
+    # 针对 25Hz 雷达的设置
+    minimum_time_interval: 0.03 # 约 30Hz，足够覆盖 25Hz
+    throttle_scans: 1           # 每收到几帧处理一帧 (1=处理所有)
+                                # 如果依然卡，可以改成 2 (相当于降采样)
+
+    # --- 5. 扫描匹配宽容度 (防止稍微一动就跟丢) ---
+    # 增大搜索窗口，允许两帧之间有较大的移动
+    correlation_search_space_dimension: 1.0 
+    correlation_search_space_resolution: 0.05
+    correlation_search_space_smear_deviation: 0.1 
+     # 【关键修改 1】将最小移动阈值设为 0
+    # 默认需要移动 0.5米才更新地图，改成 0 后，只要有雷达数据就更新
+    minimum_travel_distance: 0.0
+    minimum_travel_heading: 0.0
+
+    # 【关键修改 2】地图更新间隔
+    # 设为 0.5 或 1.0。如果设太大（比如 5.0），你会觉得它卡死了。
+    map_update_interval: 0.1
+
+    # 【关键修改 3】确保扫描匹配开启
+    # 没有里程计必须开这个，否则它不知道你在动
+    use_scan_matching: true
+
+    # --- 6. 地图分辨率 ---
+    resolution: 0.05
+
+    # Loop Closure (闭环检测)
+    do_loop_closing: true
+    loop_match_minimum_chain_size: 3
+    loop_match_maximum_variance_coarse: 3.0
+    loop_match_minimum_response_coarse: 0.35
+    loop_match_minimum_response_fine: 0.45
+
+    # Memory
+    enable_interactive_mode: true

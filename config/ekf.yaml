@@ -1,0 +1,37 @@
+### ekf.yaml
+ekf_filter_node:
+  ros__parameters:
+    frequency: 50.0   # 建议 50Hz，为了让 Rviz 显示更丝滑
+    two_d_mode: true  # 【关键】强制 2D 模式，忽略高度和倾斜，极大增加稳定性
+    publish_tf: true  # 【关键】必须开启！用来发布 odom -> base_link 变换
+
+    map_frame: map
+    odom_frame: odom
+    base_link_frame: base_link
+    world_frame: odom
+
+    # --- IMU 配置 ---
+    imu0: /imu # 你的 Witmotion 话题
+    
+    # 配置矩阵说明：
+    # [x, y, z, 
+    #  roll, pitch, yaw, 
+    #  vx, vy, vz, 
+    #  vroll, vpitch, vyaw, 
+    #  ax, ay, az]
+    
+    imu0_config: [false, false, false, # 位置 (IMU无法提供)
+                  false, false, false, # 方向 (Roll/Pitch 不用，Yaw 也不用，防止磁力计干扰)
+                  false, false, false, # 线速度
+                  false, false, true,  # 角速度 (只信任 Yaw 角速度，这是 IMU 最准的数据)
+                  false, false, false] # 加速度 (不使用，积分漂移太大)
+
+    # 使用相对模式：上电那一刻的朝向作为 0 度
+    imu0_relative: true 
+    imu0_differential: false
+    
+    # 移除重力影响
+    imu0_remove_gravitational_acceleration: true
+    
+    # 设为 true 可以在没有数据时预测（平滑）
+    predict_to_current_time: true

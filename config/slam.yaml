@@ -1,0 +1,19 @@
+slam_toolbox:
+  ros__parameters:
+    use_sim_time: false
+
+    # 坐标系与话题名称，使用双引号确保是字符串
+    odom_frame: "odom"
+    map_frame: "map"
+    base_frame: "base_link"
+    scan_topic: "/scan"
+
+    # SLAM核心参数
+    mode: "mapping"
+    map_update_interval: 1.0
+    resolution: 0.05
+    max_laser_range: 10.0
+    use_scan_matching: true
+
+    # 解决TF时序问题的关键参数，容忍时间戳的微小偏差
+    transform_timeout: 2.0
