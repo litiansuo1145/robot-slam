@@ -10,7 +10,8 @@ def generate_launch_description():
     # ================= 配置 =================
     package_name = 'robot_slam'
     slam_config = 'slam_toolbox_params.yaml'
-    ekf_config = 'ekf.yaml' # 你的 EKF 配置文件名
+    ekf_config = 'ekf.yaml'
+    rviz_config = 'slam.rviz'  
     
     lidar_frame = 'pavo2s_frame'
     # =======================================
@@ -33,8 +34,7 @@ def generate_launch_description():
         )
     )
 
-    # 3. 静态 TF: base_link -> pavo2s_frame (连接底盘和雷达)
-    # 【必须保留】
+    # 3. 静态 TF
     tf_base_to_laser = Node(
         package='tf2_ros',
         executable='static_transform_publisher',
@@ -42,8 +42,7 @@ def generate_launch_description():
         arguments=['0.1', '0', '0', '0', '0', '0', 'base_link', lidar_frame]
     )
 
-    # 4. EKF 节点 (代替之前的 odom_to_base 静态 TF)
-    # 这个节点会订阅 /imu，并发布 odom -> base_link 的动态 TF
+    # 4. EKF 节点
     ekf_node = Node(
         package='robot_localization',
         executable='ekf_node',
@@ -61,19 +60,21 @@ def generate_launch_description():
         parameters=[PathJoinSubstitution([pkg_share, 'config', slam_config])],
     )
 
-    # 6. Rviz
+    # 6. Rviz (带参数启动)
+    rviz_config_path = PathJoinSubstitution([pkg_share, 'rviz', rviz_config])
+
     rviz = Node(
         package='rviz2',
         executable='rviz2',
         name='rviz2',
-        output='screen'
+        output='screen',
+        arguments=['-d', rviz_config_path]
     )
 
     return LaunchDescription([
         start_lidar,
         start_imu,
         tf_base_to_laser,
-        # tf_odom_to_base, # <--- 这一行必须删掉或注释掉，否则 TF 会打架！
         ekf_node,
         slam_toolbox,
         rviz
