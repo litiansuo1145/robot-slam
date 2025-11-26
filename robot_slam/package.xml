@@ -6,6 +6,14 @@
   <description>TODO: Package description</description>
   <maintainer email="nvidia@todo.todo">nvidia</maintainer>
   <license>TODO: License declaration</license>
+  <depend>rclpy</depend>
+  <depend>geometry_msgs</depend>
+  <depend>std_msgs</depend>
+  <depend>launch</depend>
+  <depend>launch_ros</depend>
+  <!-- 如果你用了 sllidar 和 slam_toolbox，也可以写上，不写也不影响运行 -->
+  <exec_depend>sllidar_ros2</exec_depend>
+  <exec_depend>slam_toolbox</exec_depend>
 
   <test_depend>ament_copyright</test_depend>
   <test_depend>ament_flake8</test_depend>

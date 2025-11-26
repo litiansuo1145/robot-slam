@@ -11,7 +11,7 @@ ekf_filter_node:
     world_frame: odom
 
     # --- IMU 配置 ---
-    imu0: /imu # 你的 Witmotion 话题
+    imu0: /imu_data # imu话题名
     
     # 配置矩阵说明：
     # [x, y, z, 

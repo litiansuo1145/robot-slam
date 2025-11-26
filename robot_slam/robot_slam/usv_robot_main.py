@@ -51,38 +51,28 @@ class DualCameraSender(threading.Thread):
         self.socket.setsockopt(zmq.SNDHWM, 5)
         self.socket.bind(f"tcp://*:{VIDEO_PORT}")
         
-        # 1. 启动 CSI
+        # CSI
         print(f"[Video] 正在启动 CSI...")
         pipeline = gstreamer_pipeline(sensor_id=CSI_SENSOR_ID, display_width=DISPLAY_WIDTH, display_height=DISPLAY_HEIGHT)
         self.cam_csi = cv2.VideoCapture(pipeline, cv2.CAP_GSTREAMER)
-        if self.cam_csi.isOpened():
-            print("[Video] CSI 摄像头启动成功")
-        else:
-            print("[Video] CSI 摄像头启动失败")
-
-        # USB 变量
+        
+        # USB
         self.cam_usb = None
         self.last_usb_check_time = 0
-        self.usb_dev_id = -1 # 记录找到的 ID
 
     def scan_and_open_usb(self):
-        """自动扫描 USB 摄像头 (排除 CSI ID 0)"""
-        # 尝试列表：通常是 1 或 2，或者是 3
-        candidates = [1, 2, 3, 4]
-        for idx in candidates:
+        """自动扫描 USB 摄像头"""
+        # 尝试 ID 1 到 4
+        for idx in range(1, 5):
             try:
-                # 使用 V4L2 后端尝试打开
+                # 使用 V4L2 后端
                 cap = cv2.VideoCapture(idx, cv2.CAP_V4L2)
-                # 必须设置分辨率，否则有些摄像头打不开
                 cap.set(cv2.CAP_PROP_FRAME_WIDTH, 320)
                 cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 240)
-                
                 if cap.isOpened():
-                    # 读一帧试试
                     ret, _ = cap.read()
                     if ret:
-                        print(f"[Video] 自动发现 USB 摄像头 -> ID: {idx}")
-                        self.usb_dev_id = idx
+                        print(f"[Video] 成功找到 USB 摄像头 -> /dev/video{idx}")
                         return cap
                     else:
                         cap.release()
@@ -91,28 +81,27 @@ class DualCameraSender(threading.Thread):
         return None
 
     def run(self):
-        print(f"[Video] 图传服务运行中...")
+        print(f"[Video] 图传服务已就绪")
         while self.running:
-            # --- CSI ---
+            # CSI
             if self.cam_csi.isOpened():
                 ret_csi, frame_csi = self.cam_csi.read()
                 if ret_csi:
                     self.send_frame('cam0', frame_csi)
             
-            # --- USB (自动重连) ---
+            # USB (自动重连 + 自动扫描)
             current_time = time.time()
             if self.cam_usb is None:
                 if current_time - self.last_usb_check_time > USB_CHECK_INTERVAL:
-                    self.cam_usb = self.scan_and_open_usb() # 使用自动扫描
+                    self.cam_usb = self.scan_and_open_usb() # 使用自动扫描函数
                     self.last_usb_check_time = current_time
             else:
                 ret_usb, frame_usb = self.cam_usb.read()
                 if ret_usb:
                     self.send_frame('cam1', frame_usb)
                 else:
-                    print("[Video] USB 摄像头已断开")
                     self.cam_usb.release()
-                    self.cam_usb = None
+                    self.cam_usb = None # 断开后重置，下次循环会触发重新扫描
             
             time.sleep(0.01)
 
@@ -138,7 +127,7 @@ class RobotControlNode(Node):
         self.cmd_vel_pub = self.create_publisher(Twist, '/cmd_vel', 10)
         self.brush_pub = self.create_publisher(Bool, '/brush_cmd', 10)
         
-        # 地图 QoS 设置
+        # QoS: Transient Local
         map_qos = QoSProfile(
             depth=1,
             durability=DurabilityPolicy.TRANSIENT_LOCAL,
@@ -152,13 +141,11 @@ class RobotControlNode(Node):
         self.ctrl_socket.setsockopt_string(zmq.SUBSCRIBE, '')
         
         self.create_timer(0.01, self.check_zmq_ctrl)
-        self.get_logger().info(f"[Control] ROS2 节点就绪 (自动USB + 地图发送)")
+        # 修改日志标记版本
+        self.get_logger().info(f"[Control] ROS2 节点就绪 (AutoUSB + Map v3)")
 
     def map_callback(self, msg):
         try:
-            # 将日志级别设为 INFO 方便调试，确认是否收到地图
-            # self.get_logger().info(f"Map Update: {msg.info.width}x{msg.info.height}")
-            
             width = msg.info.width
             height = msg.info.height
             data = np.array(msg.data, dtype=np.int8).reshape((height, width))
@@ -174,8 +161,8 @@ class RobotControlNode(Node):
             jpg_as_text = base64.b64encode(buffer)
             
             self.video_socket.send_multipart([b'map', jpg_as_text])
-        except Exception as e:
-            self.get_logger().error(f"Map error: {e}")
+        except:
+            pass
 
     def check_zmq_ctrl(self):
         try:
@@ -198,13 +185,13 @@ class RobotControlNode(Node):
 
         except zmq.Again:
             pass
-        except Exception:
+        except:
             pass
 
     def save_map_file(self):
         timestamp = int(time.time())
         map_name = f"/home/nvidia/map_{timestamp}"
-        self.get_logger().info(f"Saving map to: {map_name}")
+        self.get_logger().info(f"Saving map: {map_name}")
         cmd = f"ros2 run nav2_map_server map_saver_cli -f {map_name}"
         subprocess.Popen(cmd, shell=True)
 
