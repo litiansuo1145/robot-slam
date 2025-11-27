@@ -1,0 +1,290 @@
+# =====================================================================================
+# ===================== Nav2 导航堆栈 - 完整参数配置文件 =============================
+# =====================================================================================
+# 说明:
+# 1. 将此文件保存为 `nav2_params.yaml` 并放在您的功能包的 `config` 文件夹下。
+# 2. 【必须修改】的参数项已用注释标出。请务必根据您的机器人实际情况进行修改。
+# 3. 其他参数是通用配置，可以作为初始值，后续可以根据导航效果进行微调。
+# =====================================================================================
+
+# -------------------------------------------------------------------------------------
+# 全局参数
+# -------------------------------------------------------------------------------------
+# amcl: 定位模块，用于在已知地图中根据激光数据确定机器人位置
+# bt_navigator: 行为树导航器，是整个导航任务的“大脑”
+# planner_server: 全局路径规划器
+# controller_server: 局部路径规划器和速度控制器
+# ...等等
+# -------------------------------------------------------------------------------------
+
+# ========================= 定位模块 (AMCL) ==========================================
+amcl:
+  ros__parameters:
+    # --- 基础配置 ---
+    use_map_topic: true               # 订阅 /map 话题获取地图
+    first_map_only: false             # 如果地图更新，amcl也随之更新
+    map_topic: /map
+    
+    # --- 【必须修改】话题与坐标系 ---
+    scan_topic: /scan                 # 【关键】您的激光雷达话题名
+    odom_frame_id: "odom"             # 里程计坐标系 (由 robot_localization 发布)
+    base_frame_id: "base_link"        # 【关键】您的机器人基座坐标系 (来自 URDF)
+    global_frame_id: "map"            # 全局地图坐标系
+    
+    # --- 粒子滤波器参数 (初学者可保持默认) ---
+    min_particles: 500                # 最小粒子数
+    max_particles: 3000               # 最大粒子数
+    initial_pose:
+      x: 0.0
+      y: 0.0
+      z: 0.0
+      yaw: 0.0
+    
+    # --- 激光雷达模型参数 ---
+    laser_max_range: 20.0             # 激光最大有效距离，-1.0 表示使用激光本身的值
+    laser_min_range: 0.15             # 激光最小有效距离
+    max_beams: 180                    # 每次更新处理的光束数量，可适当减少以提高性能
+    
+    # --- 更新频率 ---
+    update_min_d: 0.1                 # 触发更新的最小移动距离 (米)
+    update_min_a: 0.2                 # 触发更新的最小旋转角度 (弧度)
+    transform_tolerance: 1.0          # 等待 TF 变换的超时时间 (秒)
+    
+# ========================= 行为树导航器 ==========================================
+bt_navigator:
+  ros__parameters:
+    plugin_lib_names:
+    - nav2_compute_path_to_pose_action_bt_node
+    - nav2_compute_path_through_poses_action_bt_node
+    - nav2_follow_path_action_bt_node
+    - nav2_back_up_action_bt_node
+    - nav2_spin_action_bt_node
+    - nav2_wait_action_bt_node
+    - nav2_clear_costmap_service_bt_node
+    - nav2_is_stuck_condition_bt_node
+    - nav2_goal_reached_condition_bt_node
+    - nav2_goal_updated_condition_bt_node
+    - nav2_initial_pose_received_condition_bt_node
+    - nav2_reinitialize_global_localization_service_bt_node
+    - nav2_rate_controller_bt_node
+    - nav2_distance_controller_bt_node
+    - nav2_speed_controller_bt_node
+    - nav2_truncate_path_action_bt_node
+    - nav2_goal_updater_node_bt_node
+    - nav2_recovery_node_bt_node
+    - nav2_pipeline_sequence_bt_node
+    - nav2_round_robin_node_bt_node
+    - nav2_transform_available_condition_bt_node
+    - nav2_time_expired_condition_bt_node
+    - nav2_distance_traveled_condition_bt_node
+    - nav2_single_trigger_bt_node
+    - nav2_is_battery_low_condition_bt_node
+    - nav2_navigate_through_poses_action_bt_node
+    - nav2_navigate_to_pose_action_bt_node
+    - nav2_remove_passed_goals_action_bt_node
+    global_frame: map
+    robot_base_frame: base_link
+    odom_topic: /odom
+
+# ========================= 地图服务器 ==========================================
+# 为 map_server 明确指定地图文件路径
+map_server:
+  ros__parameters:
+    use_sim_time: false
+    # 【重要】这里必须使用 install 目录下的绝对路径
+    yaml_filename: "/home/nvidia/ros2_ws/install/usv_navigation/share/usv_navigation/maps/my_map.yaml"
+
+
+# ========================= 全局规划器 ==========================================
+planner_server:
+  ros__parameters:
+    expected_planner_frequency: 1.0
+    # 使用 NavFnPlanner 作为全局规划器插件 (基于 Dijkstra 或 A*)
+    planner_plugins: ["GridBased"]
+    GridBased:
+      plugin: "nav2_navfn_planner/NavfnPlanner"
+      tolerance: 0.5                  # 到达目标点的容忍距离
+      use_astar: false                # false 使用 Dijkstra, true 使用 A*
+      allow_unknown: true             # 是否允许在未知区域规划
+
+# ========================= 局部规划器/控制器 ==========================================
+controller_server:
+  ros__parameters:
+    use_sim_time: false
+    # 使用 DWB (Dynamic Window Approach) 作为局部规划器插件
+    controller_plugins: ["FollowPath"]
+    FollowPath:
+      plugin: "dwb_core::DWBLocalPlanner"
+      # 【重要】机器人尺寸参数 (用于碰撞检测)
+      # 请根据机器人实际尺寸修改，这里用一个圆形机器人作为示例
+      robot_radius: 0.3               # 如果机器人是圆形, 设置半径
+      # footprint: "[[x0, y0], [x1, y1], ...]" # 如果机器人是多边形, 使用这个代替 radius
+      
+      # --- 路径跟踪参数 ---
+      transform_tolerance: 1.0
+      prune_plan: true                # 是否裁切已经走过的全局路径
+      short_circuit_plan_exception_on_nav_error: true
+      
+      # --- DWB 插件的详细参数 ---
+      critics: ["RotateToGoal", "Oscillation", "BaseObstacle", "GoalAlign", "PathAlign", "PathDist"]
+      BaseObstacle.scale: 0.02
+      PathAlign.scale: 32.0
+      PathAlign.forward_point_distance: 0.1
+      GoalAlign.scale: 24.0
+      GoalAlign.forward_point_distance: 0.1
+      RotateToGoal.scale: 32.0
+      # --- 平移速度 ---
+      min_vel_x: -0.1      # 最小平移速度。如果机器人可以后退，设为负值(如-0.1)，否则为0
+      max_vel_x: 0.5       # 最大安全前进速度
+      acc_lim_x: 1.0       # 前进加速度限制
+      decel_lim_x: -1.0    # 减速限制 (负值表示使用 acc_lim_x)
+      
+      # --- 旋转速度 ---
+      min_vel_theta: 0.0   # 最小旋转速度，通常为0
+      max_vel_theta: 1.0   # 最大安全旋转速度
+      acc_lim_theta: 2.5   # 旋转加速度限制
+      decel_lim_theta: -2.5 # 旋转减速限制
+      
+      # 速度采样参数
+      # 告诉 DWB 在生成轨迹时，最小应该采样的速度是多少
+
+      
+      min_speed_xy: 0.1     # 最小线速度采样值。
+      min_speed_theta: 0.2  # 最小角速度采样值。
+
+# ========================= 全局代价地图 ==========================================
+global_costmap:
+  ros__parameters:
+    # --- 基础配置 ---
+    global_frame: map                 # 全局代价地图在 map 坐标系下
+    robot_base_frame: base_link       # 机器人的基座坐标系
+    update_frequency: 1.0             # 更新频率 (Hz)
+    publish_frequency: 1.0            # 发布频率 (Hz)
+    transform_tolerance: 1.0 
+    
+    # --- 【重要】机器人尺寸 ---
+    # 必须与 controller_server 中的设置保持一致
+    robot_radius: 0.3                 # 圆形机器人半径
+    # footprint: "[[x0, y0], [x1, y1], ...]" # 多边形机器人轮廓
+
+    # --- 地图层级配置 ---
+    plugins: ["static_layer", "obstacle_layer", "inflation_layer"]
+    
+    # --- 静态地图层 (来自 map_server) ---
+    static_layer:
+      plugin: "nav2_costmap_2d::StaticLayer"
+      map_subscribe_transient_local: true
+      
+    # --- 障碍物层 (来自传感器) ---
+    obstacle_layer:
+      plugin: "nav2_costmap_2d::ObstacleLayer"
+      enabled: true
+      observation_sources: laser_scan_sensor
+      laser_scan_sensor:
+        sensor_frame: laser_frame     # 【必须修改】您的激光雷达的 frame_id (来自 URDF)
+        topic: /scan                  # 【必须修改】您的激光雷达话题名
+        data_type: "LaserScan"
+        marking: true
+        clearing: true
+        
+    # --- 膨胀层 (在障碍物周围创建缓冲区) ---
+    inflation_layer:
+      plugin: "nav2_costmap_2d::InflationLayer"
+      cost_scaling_factor: 3.0        # 膨胀系数，越大衰减越快
+      inflation_radius: 0.5           # 膨胀半径 (米), 应大于 robot_radius
+      
+# ========================= 局部代价地图 ==========================================
+local_costmap:
+  ros__parameters:
+    # --- 基础配置 ---
+    global_frame: odom                # 局部代价地图在 odom 坐标系下
+    robot_base_frame: base_link
+    update_frequency: 5.0
+    publish_frequency: 2.0
+    transform_tolerance: 1.0
+    rolling_window: true              # 局部地图会跟随机器人移动
+    width: 3                          # 局部地图宽度 (米)
+    height: 3                         # 局部地图高度 (米)
+    resolution: 0.05                  # 局部地图分辨率 (米/像素)
+    
+    # --- 【重要】机器人尺寸 ---
+    # 必须与 controller_server 中的设置保持一致
+    robot_radius: 0.3
+    # footprint: "[[x0, y0], [x1, y1], ...]"
+
+    # --- 地图层级配置 ---
+    plugins: ["obstacle_layer", "inflation_layer"]
+
+    # --- 障碍物层 (与全局配置类似) ---
+    obstacle_layer:
+      plugin: "nav2_costmap_2d::ObstacleLayer"
+      enabled: true
+      observation_sources: laser_scan_sensor
+      laser_scan_sensor:
+        sensor_frame: laser_frame     # 【必须修改】您的激光雷达的 frame_id
+        topic: /scan                  # 【必须修改】您的激光雷达话题名
+        data_type: "LaserScan"
+        marking: true
+        clearing: true
+
+    # --- 膨胀层 (与全局配置类似) ---
+    inflation_layer:
+      plugin: "nav2_costmap_2d::InflationLayer"
+      cost_scaling_factor: 3.0
+      inflation_radius: 0.5
+
+# ========================= 其他组件 (可保持默认) =================================
+behavior_server:
+  ros__parameters:
+    costmap_topic: local_costmap/costmap_raw
+    footprint_topic: local_costmap/published_footprint
+    cycle_frequency: 10.0
+    behavior_plugins: ["spin", "backup", "wait"]
+    spin:
+      plugin: "nav2_behaviors/Spin"
+    backup:
+      plugin: "nav2_behaviors/BackUp"
+    wait:
+      plugin: "nav2_behaviors/Wait"
+
+smoother_server:
+  ros__parameters:
+    use_sim_time: false
+    smoother_plugins: ["simple_smoother"]
+    simple_smoother:
+      plugin: "nav2_smoother::SimpleSmoother"
+      w_smooth: 0.3
+      w_data: 0.2
+      tolerance: 1.0e-10
+
+waypoint_follower:
+  ros__parameters:
+    loop_rate: 20
+    stop_on_failure: true
+    waypoint_task_executor_plugin: "wait_at_waypoint"
+    wait_at_waypoint:
+      plugin: "nav2_waypoint_follower::WaitAtWaypoint"
+      enabled: true
+      waypoint_pause_duration: 0
+      # ========================= Nav2 生命周期管理器 ===============================
+# 我们需要覆盖 nav2_bringup 默认的管理器参数
+# 明确地告诉它不要去管理我们手动启动的 map_server
+lifecycle_manager:
+  ros__parameters:
+    autostart: true
+    node_names:
+      - controller_server
+      - smoother_server
+      - planner_server
+      - behavior_server
+      - bt_navigator
+      - waypoint_follower
+      - velocity_smoother
+
+# 同样，为定位的生命周期管理器也做一样的修改
+lifecycle_manager_localization:
+  ros__parameters:
+    autostart: true
+    node_names:
+      - amcl
+      # 注意：这里默认的配置里包含了 map_server，我们把它删掉了！

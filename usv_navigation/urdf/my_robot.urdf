@@ -1,0 +1,54 @@
+<?xml version="1.0"?>
+<robot name="my_robot">
+
+  <!-- ================================================================ -->
+  <!-- ===================== 连 杆 定 义 (Links) ====================== -->
+  <!-- ================================================================ -->
+
+  <!-- 机器人基座连杆 (Robot's Center) -->
+  <link name="base_link">
+    <visual>
+      <geometry>
+        <box size="0.4 0.3 0.1"/>
+      </geometry>
+      <origin xyz="0 0 0.05" rpy="0 0 0"/>
+    </visual>
+  </link>
+
+  <!-- Pavo 激光雷达连杆 -->
+  <link name="pavo2s_frame">
+    <visual>
+      <geometry>
+        <cylinder radius="0.05" length="0.06"/>
+      </geometry>
+      <!-- 为了让材质生效，需要定义它 -->
+      <material name="blue">
+        <color rgba="0 0 1 1"/>
+      </material>
+    </visual>
+  </link>
+
+  <!-- IMU 连杆 (即使没有形状，定义一个坐标系也很有用) -->
+  <link name="imu_link"/>
+
+  <!-- ================================================================ -->
+  <!-- =================== 关 节 定 义 (Joints) ===================== -->
+  <!-- ================================================================ -->
+
+  <!-- 关节 1: 连接 base_link 和 pavo2s_frame (雷达) -->
+  <joint name="pavo_laser_joint" type="fixed">
+    <parent link="base_link"/>
+    <child link="pavo2s_frame"/>
+    <!-- 【请确认】这里的 xyz 值是您测量的雷达的实际物理位置 -->
+    <origin xyz="0.25 0.0 0.1" rpy="0 0 0"/>
+  </joint>
+
+  <!-- 关节 2: 连接 base_link 和 imu_link (IMU) -->
+  <joint name="imu_joint" type="fixed">
+    <parent link="base_link"/>
+    <child link="imu_link"/>
+    <!-- IMU通常在机器人中心，所以偏移为0 -->
+    <origin xyz="0 0 0" rpy="0 0 0"/>
+  </joint>
+
+</robot>

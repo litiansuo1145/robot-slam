@@ -21,7 +21,7 @@ import subprocess
 
 # ================= 配置区 =================
 CSI_SENSOR_ID = 0
-DISPLAY_WIDTH = 1920   
+DISPLAY_WIDTH = 1920  
 DISPLAY_HEIGHT = 1080
 USB_CHECK_INTERVAL = 2.0 
 
